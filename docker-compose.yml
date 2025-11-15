@@ -1,0 +1,32 @@
+version: "3.9"
+
+services:
+  app:
+    build: .
+    container_name: automate-tiktok-app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: 3000
+      DOWNLOAD_JOB_INTERVAL_MS: 10000
+      SPEACHES_BASE_URL: http://speaches:8000
+      TRANSCRIPTION_MODEL_ID: guillaumekln/faster-whisper-base
+    depends_on:
+      - speaches
+    volumes:
+      - ./video:/app/video
+      - ./audio:/app/audio
+      - ./videos.db:/app/videos.db
+
+  speaches:
+    image: ghcr.io/speaches-ai/speaches:latest-cpu
+    container_name: speaches
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - hf-hub-cache:/home/ubuntu/.cache/huggingface/hub
+
+volumes:
+  hf-hub-cache:

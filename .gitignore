@@ -1,0 +1,11 @@
+node_modules
+audio/
+video/
+*.db
+*.db-wal
+*.db-shm
+server.log
+hf-cache/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

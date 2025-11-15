@@ -1,0 +1,27 @@
+version: 1
+name: "tiktok_comment_minimal"
+variables:
+  uploader_username: "@username"
+  profile_signature: "bio/signature"
+  created_iso: "2025-11-16T10:00:00Z"
+  text: "deskripsi + #hashtag"
+  transcript: "hasil STT"
+template: |
+  --- prompt ---
+  [data profil pengupload]
+  username: @{{uploader_username}}
+  Bio: {{profile_signature}}
+
+  [tanggal dibuat]
+  {{created_iso}}
+
+  [deskripsi video]
+  {{text}}
+
+  [transkrip video]
+  {{transcript}}
+
+  Instruksi:
+  Tulis komentar singkat, kontekstual, sopan, dan informatif untuk kolom komentar TikTok. Maks 3 kalimat.
+  Gunakan Bahasa Indonesia natural.
+  ---
