@@ -10,6 +10,16 @@ const updatePromptStmt = db.prepare(
    WHERE url_id = @url_id`
 );
 
+const getCommentByIdStmt = db.prepare(
+  'SELECT * FROM comments WHERE id = ?'
+);
+
+const updateLlmCommentStmt = db.prepare(
+  `UPDATE comments
+     SET llm_comment = @llm_comment
+   WHERE id = @id`
+);
+
 function ensureCommentRecord(urlId) {
   insertCommentStmt.run(urlId);
 }
@@ -21,7 +31,20 @@ function updatePrompt({ urlId, promptText }) {
   });
 }
 
+function getCommentById(id) {
+  return getCommentByIdStmt.get(id);
+}
+
+function updateLlmComment({ id, llmComment }) {
+  updateLlmCommentStmt.run({
+    id,
+    llm_comment: llmComment
+  });
+}
+
 module.exports = {
   ensureCommentRecord,
-  updatePrompt
+  updatePrompt,
+  getCommentById,
+  updateLlmComment
 };

@@ -12,7 +12,7 @@ template: |
   username: @{{uploader_username}}
   Bio: {{profile_signature}}
 
-  [tanggal dibuat]
+  [tanggal video dibuat]
   {{created_iso}}
 
   [deskripsi video]

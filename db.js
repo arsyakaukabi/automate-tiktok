@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS urls (
   url          TEXT NOT NULL UNIQUE,
   is_downloaded INTEGER NOT NULL DEFAULT 0,       -- 0/1
   mp4_path     TEXT,                              -- path lokal / S3 presigned / dsb.
+  create_time  INTEGER,                           -- epoch detik dari TikTok
   video_desc   TEXT,                              -- deskripsi video
   author_username TEXT,                           -- uniqueId / username penulis
   author_signature TEXT,                          -- signature penulis

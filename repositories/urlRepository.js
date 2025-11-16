@@ -10,6 +10,7 @@ const updateDownloadStmt = db.prepare(
   `UPDATE urls
      SET is_downloaded = @is_downloaded,
          mp4_path = @mp4_path,
+         create_time = @create_time,
          video_desc = @video_desc,
          author_username = @author_username,
          author_signature = @author_signature
@@ -45,12 +46,14 @@ function markAsDownloaded({
   filePath,
   videoDesc,
   authorUsername,
-  authorSignature
+  authorSignature,
+  createTime
 }) {
   updateDownloadStmt.run({
     id,
     is_downloaded: 1,
     mp4_path: filePath,
+    create_time: typeof createTime === 'number' ? createTime : null,
     video_desc: videoDesc || null,
     author_username: authorUsername || null,
     author_signature: authorSignature || null

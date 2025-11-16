@@ -16,7 +16,8 @@ async function processPendingUrl(row) {
       info.author?.uniqueId ||
       info.author?.username ||
       null,
-    authorSignature: info.author?.signature || null
+    authorSignature: info.author?.signature || null,
+    createTime: typeof info.createTime === 'number' ? info.createTime : null
   });
 
   console.log(`Downloaded ${row.url} -> ${filePath}`);

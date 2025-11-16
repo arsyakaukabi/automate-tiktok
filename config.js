@@ -11,6 +11,8 @@ const SPEECHES_BASE_URL =
 const TRANSCRIPTION_MODEL_ID =
   process.env.TRANSCRIPTION_MODEL_ID ||
   'guillaumekln/faster-whisper-base';
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-flash-lite-latest';
 
 fs.mkdirSync(VIDEO_DIR, { recursive: true });
 fs.mkdirSync(AUDIO_DIR, { recursive: true });
@@ -21,5 +23,7 @@ module.exports = {
   PROMPT_FILE,
   JOB_INTERVAL_MS,
   SPEECHES_BASE_URL,
-  TRANSCRIPTION_MODEL_ID
+  TRANSCRIPTION_MODEL_ID,
+  GEMINI_API_KEY,
+  GEMINI_MODEL
 };

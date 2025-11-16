@@ -16,10 +16,17 @@ async function processPendingTranscription(row) {
   });
 
   commentRepository.ensureCommentRecord(row.url_id);
+  const createdIso =
+    typeof row.create_time === 'number'
+      ? new Date(row.create_time * 1000).toISOString()
+      : row.create_time
+      ? new Date(Number(row.create_time) * 1000).toISOString()
+      : row.created_at || '';
+
   const prompt = buildPrompt({
     uploader_username: row.author_username || 'unknown',
     profile_signature: row.author_signature || '',
-    created_iso: row.created_at || '',
+    created_iso: createdIso,
     text: row.video_desc || '',
     transcript: transcriptText
   });
