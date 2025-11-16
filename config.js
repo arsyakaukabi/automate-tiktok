@@ -1,5 +1,6 @@
 const path = require('path');
 const fs = require('fs');
+require('dotenv').config();
 
 const VIDEO_DIR = path.join(__dirname, 'video');
 const AUDIO_DIR = path.join(__dirname, 'audio');
@@ -13,7 +14,7 @@ const TRANSCRIPTION_MODEL_ID =
   'guillaumekln/faster-whisper-base';
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-flash-lite-latest';
-
+const TELEGRAM_NOTIFY_URL = process.env.TELEGRAM_NOTIFY_URL || '';
 fs.mkdirSync(VIDEO_DIR, { recursive: true });
 fs.mkdirSync(AUDIO_DIR, { recursive: true });
 
@@ -25,5 +26,6 @@ module.exports = {
   SPEECHES_BASE_URL,
   TRANSCRIPTION_MODEL_ID,
   GEMINI_API_KEY,
-  GEMINI_MODEL
+  GEMINI_MODEL,
+  TELEGRAM_NOTIFY_URL
 };

@@ -2,6 +2,7 @@ const transcriptRepository = require('../repositories/transcriptRepository');
 const commentRepository = require('../repositories/commentRepository');
 const { transcribeAudio } = require('../services/transcriptionService');
 const { buildPrompt } = require('../services/promptService');
+const { notifyPromptReady } = require('../services/notificationService');
 const { JOB_INTERVAL_MS } = require('../config');
 
 let transcriptionJobRunning = false;
@@ -16,6 +17,10 @@ async function processPendingTranscription(row) {
   });
 
   commentRepository.ensureCommentRecord(row.url_id);
+  const commentRecord = commentRepository.getCommentByUrlId(row.url_id);
+  if (!commentRecord) {
+    throw new Error(`Comment record missing for url_id=${row.url_id}`);
+  }
   const createdIso =
     typeof row.create_time === 'number'
       ? new Date(row.create_time * 1000).toISOString()
@@ -34,6 +39,11 @@ async function processPendingTranscription(row) {
   commentRepository.updatePrompt({
     urlId: row.url_id,
     promptText: prompt
+  });
+  await notifyPromptReady({
+    id: commentRecord.id,
+    url: row.url,
+    prompt_text: prompt
   });
 
   console.log(`Transcripted URL ${row.url_id}`);

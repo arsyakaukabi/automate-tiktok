@@ -6,7 +6,7 @@ console.log('DB_PATH in container:', DB_PATH); // 👈 debug
 
 const db = new Database(DB_PATH);
 
-db.pragma('journal_mode = DELETE');
+db.pragma('journal_mode = WAL');
 db.pragma('synchronous = NORMAL');
 db.pragma('foreign_keys = ON');
 
@@ -77,6 +77,8 @@ CREATE TABLE IF NOT EXISTS comments (
   url_id       INTEGER NOT NULL,
   prompt_text  TEXT,                              -- prompt final yang dikirim ke LLM
   llm_comment  TEXT,                              -- hasil komentar dari LLM
+  posted_by    TEXT,
+  is_generated INTEGER NOT NULL DEFAULT 0,        -- flag komentar sudah digenerate
   is_posted    INTEGER NOT NULL DEFAULT 0,        -- 0/1
   posted_at    TEXT,                              -- ISO8601 ketika sudah dipost
   created_at   TEXT NOT NULL DEFAULT (STRFTIME('%Y-%m-%dT%H:%M:%fZ','now')),

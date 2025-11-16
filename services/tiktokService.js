@@ -5,10 +5,27 @@ const Tiktok = require('@tobyg74/tiktok-api-dl');
 const { VIDEO_DIR } = require('../config');
 
 function resolveDownloadUrl(videoInfo) {
-  const downloadAddr = videoInfo.video?.downloadAddr;
-  return Array.isArray(downloadAddr)
-    ? downloadAddr[0]?.url || downloadAddr[0]
-    : downloadAddr?.url || downloadAddr;
+  const video = videoInfo.video || {};
+  const downloadAddr = video.downloadAddr;
+  const playAddr = video.playAddr;
+
+  const findUrl = (addr) => {
+    if (!addr) return null;
+    if (Array.isArray(addr)) {
+      for (const item of addr) {
+        if (typeof item === 'string' && item) {
+          return item;
+        }
+        if (item?.url) {
+          return item.url;
+        }
+      }
+      return null;
+    }
+    return addr.url || addr;
+  };
+
+  return findUrl(downloadAddr) || findUrl(playAddr);
 }
 
 async function downloadFile(sourceUrl, destinationPath) {

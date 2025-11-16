@@ -33,6 +33,7 @@ const getPendingTranscriptionStmt = db.prepare(`
     u.video_desc,
     u.author_username,
     u.author_signature,
+    u.url,
     u.created_at,
     u.create_time
   FROM transcripts t

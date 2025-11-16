@@ -3,6 +3,19 @@ const router = express.Router();
 const urlRepository = require('../repositories/urlRepository');
 const { downloadTikTokVideo } = require('../services/tiktokService');
 
+router.post('/add', (req, res) => {
+  const { url } = req.body || {};
+  if (typeof url !== 'string' || !url.trim()) {
+    return res.status(400).json({
+      status: 'error',
+      message: '`url` is required'
+    });
+  }
+
+  const [result] = urlRepository.insertUrls([url.trim()]);
+  return res.json({ status: 'success', result });
+});
+
 router.post('/urls', (req, res) => {
   const { urls } = req.body || {};
   if (!Array.isArray(urls) || urls.length === 0) {
