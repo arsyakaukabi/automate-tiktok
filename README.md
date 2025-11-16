@@ -18,13 +18,10 @@ Hasil akhir (video, audio, transkrip, prompt) tersimpan pada tabel `urls`, `tran
 ## Instalasi Lokal
 
 ```bash
+cp .env.example .env   # isi nilai yang diperlukan
 npm install
 # pastikan videos.db tersedia
 touch videos.db
-# set environment (opsional jika pakai nilai default)
-export DOWNLOAD_JOB_INTERVAL_MS=10000
-export SPEACHES_BASE_URL=http://localhost:8000
-export TRANSCRIPTION_MODEL_ID=guillaumekln/faster-whisper-base
 node main.js
 ```
 
@@ -38,6 +35,7 @@ Job berjalan otomatis sehingga setelah URL dimasukkan, sistem mengunduh, mengonv
 ## Menjalankan dengan Docker Compose
 
 ```bash
+cp .env.example .env   # isi BOT_TOKEN, GEMINI_API_KEY, dll.
 # buat file DB jika belum ada
 touch videos.db
 docker compose up --build
@@ -46,7 +44,8 @@ docker compose up --build
 Compose menyiapkan:
 
 - `app` – layanan utama (port 3000), mounting `video/`, `audio/`, dan `videos.db`.
-- `speaches` – image resmi `ghcr.io/speaches-ai/speaches:latest-cpu` (port 8000) dengan volume cache HuggingFace.
+- `bot` – menjalankan `npm run bot`, mengekspos port 3100 untuk webhook notifikasi Telegram.
+- `speaches` – image resmi `ghcr.io/speaches-ai/speaches:latest-cpu` (port 8000) dengan volume cache HuggingFace dan service `speaches-init` untuk pre-download model.
 
 Gunakan endpoint yang sama (`POST http://localhost:3000/urls`) untuk memasukkan daftar video.
 
@@ -63,8 +62,8 @@ npm run bot
 Variabel env penting:
 
 - `BOT_TOKEN` – token BotFather.
-- `APP_BASE_URL` – URL service utama (default `http://localhost:3000`).
-- `TELEGRAM_NOTIFY_URL` – URL webhook bot untuk menerima notifikasi dari server (misal `http://localhost:3100`).
+- `APP_BASE_URL` – URL service utama (default `http://localhost:3000` atau `http://app:3000` di Compose).
+- `TELEGRAM_NOTIFY_URL` – URL webhook bot untuk menerima notifikasi dari server (misal `http://localhost:3100` atau `http://bot:3100` di Compose).
 - `TELEGRAM_DEFAULT_CHAT_ID` (opsional) – chat yang otomatis menerima notifikasi saat bot boot.
 
 Perintah bot:

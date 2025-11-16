@@ -1,6 +1,30 @@
 version: "3.9"
 
 services:
+  app:
+    build: .
+    image: automate-tiktok-app
+    container_name: automate-tiktok-app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      PORT: ${PORT:-3000}
+      DOWNLOAD_JOB_INTERVAL_MS: ${DOWNLOAD_JOB_INTERVAL_MS:-10000}
+      SPEACHES_BASE_URL: ${SPEACHES_BASE_URL:-http://speaches:8000}
+      TRANSCRIPTION_MODEL_ID: ${TRANSCRIPTION_MODEL_ID:-guillaumekln/faster-whisper-base}
+      TELEGRAM_NOTIFY_URL: ${TELEGRAM_NOTIFY_URL:-http://bot:3100}
+      APP_BASE_URL: ${APP_BASE_URL:-http://app:3000}
+    depends_on:
+      speaches-init:
+        condition: service_completed_successfully
+    volumes:
+      - ./video:/app/video
+      - ./audio:/app/audio
+      - ./videos.db:/app/videos.db
+
   speaches:
     image: ghcr.io/speaches-ai/speaches:latest-cpu
     container_name: speaches
@@ -28,23 +52,21 @@ services:
         echo 'Model ready.';
       "
 
-  app:
-    build: .
-    container_name: automate-tiktok-app
+  bot:
+    image: automate-tiktok-app
+    container_name: automate-tiktok-bot
     restart: unless-stopped
-    ports:
-      - "3000:3000"
-    environment:
-      PORT: 3000
-      DOWNLOAD_JOB_INTERVAL_MS: 10000
-      SPEACHES_BASE_URL: http://speaches:8000
-      TRANSCRIPTION_MODEL_ID: guillaumekln/faster-whisper-base
     depends_on:
-      - speaches-init
-    volumes:
-      - ./video:/app/video
-      - ./audio:/app/audio
-      - ./videos.db:/app/videos.db
+      - app
+    command: npm run bot
+    env_file:
+      - .env
+    environment:
+      APP_BASE_URL: ${APP_BASE_URL:-http://app:3000}
+      TELEGRAM_NOTIFY_URL: ${TELEGRAM_NOTIFY_URL:-http://bot:3100}
+      TELEGRAM_BOT_PORT: ${TELEGRAM_BOT_PORT:-3100}
+    ports:
+      - "${TELEGRAM_BOT_PORT:-3100}:3100"
 
 volumes:
   hf-hub-cache:
