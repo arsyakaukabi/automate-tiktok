@@ -4,6 +4,7 @@ const { transcribeAudio } = require('../services/transcriptionService');
 const { buildPrompt } = require('../services/promptService');
 const { notifyPromptReady } = require('../services/notificationService');
 const { JOB_INTERVAL_MS } = require('../config');
+const logger = require('../logger');
 
 let transcriptionJobRunning = false;
 
@@ -46,7 +47,9 @@ async function processPendingTranscription(row) {
     prompt_text: prompt
   });
 
-  console.log(`Transcripted URL ${row.url_id}`);
+  logger.info('Transcription completed', {
+    url_id: row.url_id
+  });
 }
 
 async function runTranscriptionJob() {
@@ -56,13 +59,21 @@ async function runTranscriptionJob() {
 
   transcriptionJobRunning = true;
   try {
+    const processedIds = new Set();
     let row;
     while ((row = transcriptRepository.getNextPendingTranscription())) {
+      if (processedIds.has(row.url_id)) {
+        break;
+      }
+      processedIds.add(row.url_id);
       try {
         await processPendingTranscription(row);
       } catch (err) {
-        console.error(`Failed transcription for url ${row?.url_id}: ${err.message}`);
-        break;
+        logger.error('Transcription job failed', {
+          url_id: row?.url_id,
+          error: err.message
+        });
+        continue;
       }
     }
   } finally {

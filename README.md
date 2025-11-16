@@ -50,6 +50,31 @@ Compose menyiapkan:
 
 Gunakan endpoint yang sama (`POST http://localhost:3000/urls`) untuk memasukkan daftar video.
 
+## Telegram Bot
+
+Bot (`telegram-bot/index.js`) menerima link TikTok langsung dari chat dan memberi notifikasi saat prompt atau komentar LLM siap.
+
+### Menjalankan bot
+
+```bash
+npm run bot
+```
+
+Variabel env penting:
+
+- `BOT_TOKEN` – token BotFather.
+- `APP_BASE_URL` – URL service utama (default `http://localhost:3000`).
+- `TELEGRAM_NOTIFY_URL` – URL webhook bot untuk menerima notifikasi dari server (misal `http://localhost:3100`).
+- `TELEGRAM_DEFAULT_CHAT_ID` (opsional) – chat yang otomatis menerima notifikasi saat bot boot.
+
+Perintah bot:
+
+- Kirim URL TikTok → otomatis enqueue.
+- `/queue {n}` → daftar singkat item `is_posted=0`.
+- `/get {n}` → bubble per item dengan tombol aksi.
+- `/clear` → hapus semua pesan bot di chat.
+- `/help` → info bantuan.
+
 ## Struktur Direktori
 
 - `main.js` – entry point Express + scheduler job.
@@ -83,6 +108,7 @@ Gunakan endpoint yang sama (`POST http://localhost:3000/urls`) untuk memasukkan 
 3. Downloader job mengambil video & metadata → `urls`.
 4. Audio job konversi MP4 → WAV → `transcripts.wav_path`.
 5. Transcription job panggil Speaches.ai → isi `transcripts.transcript_text` dan `comments.prompt_text`.
-6. Prompt siap digunakan untuk mengirim komentar melalui integrasi lanjutan (belum termasuk dalam aplikasi ini).
+6. Bot Telegram mengirim prompt siap pakai. `/comments/:id/generate` (atau tombol bot) memicu Gemini untuk membuat `llm_comment`.
+7. Setelah komentar diposting manual, tekan “Submit” atau panggil `/submit` agar item keluar dari antrean.
 
 Dengan arsitektur ini, pipeline berjalan otomatis dan modular, memudahkan penambahan job berikutnya seperti summarizer, LLM comment generator, atau scheduler posting.

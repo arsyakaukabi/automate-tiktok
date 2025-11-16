@@ -1,6 +1,7 @@
 const urlRepository = require('../repositories/urlRepository');
 const { downloadTikTokVideo } = require('../services/tiktokService');
 const { JOB_INTERVAL_MS } = require('../config');
+const logger = require('../logger');
 
 let jobRunning = false;
 
@@ -20,7 +21,10 @@ async function processPendingUrl(row) {
     createTime: typeof info.createTime === 'number' ? info.createTime : null
   });
 
-  console.log(`Downloaded ${row.url} -> ${filePath}`);
+  logger.info('Download job completed', {
+    url: row.url,
+    file_path: filePath
+  });
 }
 
 async function runDownloadJob() {
@@ -30,13 +34,21 @@ async function runDownloadJob() {
 
   jobRunning = true;
   try {
+    const processedIds = new Set();
     let row;
     while ((row = urlRepository.getNextPendingUrl())) {
+      if (processedIds.has(row.id)) {
+        break;
+      }
+      processedIds.add(row.id);
       try {
         await processPendingUrl(row);
       } catch (err) {
-        console.error(`Failed to download ${row.url}: ${err.message}`);
-        break;
+        logger.error('Download job failed', {
+          url: row.url,
+          error: err.message
+        });
+        continue;
       }
     }
   } finally {

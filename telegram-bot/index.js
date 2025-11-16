@@ -22,6 +22,8 @@ if (DEFAULT_CHAT_ID) {
   knownChats.add(DEFAULT_CHAT_ID);
 }
 
+const chatMessages = new Map();
+
 // ---------- Helpers ----------
 
 function ensureChatId(chatId) {
@@ -35,8 +37,8 @@ function isTikTokUrl(text) {
     return false;
   }
   const trimmed = text.trim();
-  const regex =
-    /https?:\/\/(www\.)?(vm\.)?tiktok\.com\/[^\s]+/i;
+  const regex = /^(?:https?:\/\/)(?:(?:(?:www|m)\.)?tiktok\.com\/(?:@[\w.-]+\/video\/\d+|t\/[\w-]+)(?:[/?#][^\s]*)?|(?:vm|vt)\.tiktok\.com\/[\w-]+\/?(?:[?#][^\s]*)?)$/i;
+
   return regex.test(trimmed);
 }
 
@@ -61,6 +63,13 @@ function escapeHtml(str = '') {
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
+}
+
+function truncateForTelegram(text = '', maxLength = 3500) {
+  if (text.length <= maxLength) {
+    return text;
+  }
+  return `${text.slice(0, maxLength - 3)}...`;
 }
 
 function buildOpenVideoButton(url) {
@@ -89,7 +98,9 @@ function formatHelp() {
     '👋 Kirim tautan video TikTok untuk memulai pipeline unduh.',
     '',
     'Perintah:',
-    '/queue {n} - daftar item belum diposting',
+    '/queue {n} - daftar singkat antrean (default semua)',
+    '/get {n} - tampilkan per item (prompt/LLM/pending)',
+    '/clear - hapus riwayat pesan bot di chat ini',
     '/help - bantuan'
   ].join('\n');
 }
@@ -106,6 +117,47 @@ function formatPostedBy(ctx) {
   return String(from.id || '');
 }
 
+function trackMessageId(chatId, messageId) {
+  if (!chatId || !messageId) return;
+  const list = chatMessages.get(chatId) || [];
+  list.push(messageId);
+  chatMessages.set(chatId, list);
+}
+
+function untrackMessageId(chatId, messageId) {
+  if (!chatId || !messageId) return;
+  const list = chatMessages.get(chatId);
+  if (!list) return;
+  const filtered = list.filter((id) => id !== messageId);
+  chatMessages.set(chatId, filtered);
+}
+
+async function replyWithTracking(ctx, text, options) {
+  const message = await ctx.reply(text, options);
+  trackMessageId(ctx.chat.id, message.message_id);
+  return message;
+}
+
+async function sendMessageToChat(chatId, text, options) {
+  const message = await bot.telegram.sendMessage(chatId, text, options);
+  trackMessageId(chatId, message.message_id);
+  return message;
+}
+
+async function fetchQueue(limit, includeDetails) {
+  const params = new URLSearchParams();
+  if (limit) {
+    params.set('limit', limit);
+  }
+  if (includeDetails) {
+    params.set('details', '1');
+  }
+  const query = params.toString();
+  return callBackend(`/queue${query ? `?${query}` : ''}`, {
+    method: 'GET'
+  });
+}
+
 async function handleEnqueue(ctx, url) {
   try {
     const payload = await callBackend('/add', {
@@ -115,12 +167,12 @@ async function handleEnqueue(ctx, url) {
     const status = payload?.result?.inserted
       ? 'ditambahkan ke antrean'
       : 'sudah ada di antrean';
-    return ctx.reply(
+    return replyWithTracking(
       `✅ URL diproses (${status}). Pipeline akan berjalan otomatis.`
     );
   } catch (err) {
     console.error('Failed to add URL:', err.message);
-    return ctx.reply(
+    return replyWithTracking(
       '❌ Gagal menambahkan URL. Coba lagi nanti atau gunakan /help.'
     );
   }
@@ -128,22 +180,69 @@ async function handleEnqueue(ctx, url) {
 
 async function sendQueue(ctx, limit) {
   try {
-    const query = limit ? `?limit=${limit}` : '';
-    const payload = await callBackend(`/queue${query}`, {
-      method: 'GET'
-    });
+    const payload = await fetchQueue(limit, false);
     const rows = payload?.result || [];
     if (!rows.length) {
-      return ctx.reply('Antrean kosong 🎉');
+      return replyWithTracking(ctx, 'Antrean kosong 🎉');
     }
     const lines = rows.map(
       (row) => `ID ${row.id}, ${row.status}, ${row.url}`
     );
-    return ctx.reply(lines.join('\n'));
+    return replyWithTracking(ctx, lines.join('\n'));
   } catch (err) {
     console.error('Failed to fetch queue:', err.message);
-    return ctx.reply('Tidak bisa mengambil antrean sekarang.');
+    return replyWithTracking(ctx, 'Tidak bisa mengambil antrean sekarang.');
   }
+}
+
+async function sendPromptBubble(chatId, payload) {
+  const truncated = truncateForTelegram(payload.prompt_text || '');
+  const text = `<b>Prompt Ready (#${payload.id})</b>\n<pre>${escapeHtml(
+    truncated
+  )}</pre>`;
+  await sendMessageToChat(chatId, text, {
+    parse_mode: 'HTML',
+    reply_markup: buildPromptKeyboard(payload.id, payload.url).reply_markup
+  });
+}
+
+async function sendCommentBubble(chatId, payload) {
+  const truncated = truncateForTelegram(payload.llm_comment || '');
+  const text = `<b>LLM Comment (#${payload.id})</b>\n<pre>${escapeHtml(
+    truncated
+  )}</pre>`;
+  await sendMessageToChat(chatId, text, {
+    parse_mode: 'HTML',
+    reply_markup: buildCommentKeyboard(payload.id, payload.url).reply_markup
+  });
+}
+
+async function sendPendingBubble(chatId, payload) {
+  const text = `<b>Pending (#${payload.id})</b>\nStatus: ${payload.status}\n${payload.url}`;
+  await sendMessageToChat(chatId, text, {
+    parse_mode: 'HTML',
+    reply_markup: buildPromptKeyboard(payload.id, payload.url).reply_markup
+  });
+}
+
+async function notifyQueueBubble(chatId, item) {
+  if (item.llm_comment) {
+    await sendCommentBubble(chatId, {
+      id: item.id,
+      llm_comment: item.llm_comment,
+      url: item.url
+    });
+    return;
+  }
+  if (item.prompt_text) {
+    await sendPromptBubble(chatId, {
+      id: item.id,
+      prompt_text: item.prompt_text,
+      url: item.url
+    });
+    return;
+  }
+  await sendPendingBubble(chatId, item);
 }
 
 async function broadcastPromptMessage(payload) {
@@ -152,16 +251,9 @@ async function broadcastPromptMessage(payload) {
     return;
   }
 
-  const text = `<b>Prompt Ready (#${payload.id})</b>\n<pre>${escapeHtml(
-    payload.prompt_text
-  )}</pre>`;
-
   for (const chatId of knownChats) {
     try {
-      await bot.telegram.sendMessage(chatId, text, {
-        parse_mode: 'HTML',
-        reply_markup: buildPromptKeyboard(payload.id, payload.url).reply_markup
-      });
+      await sendPromptBubble(chatId, payload);
     } catch (err) {
       console.error(
         `Failed to send prompt notification to ${chatId}:`,
@@ -177,16 +269,9 @@ async function broadcastCommentMessage(payload) {
     return;
   }
 
-  const text = `<b>LLM Comment (#${payload.id})</b>\n<pre>${escapeHtml(
-    payload.llm_comment
-  )}</pre>`;
-
   for (const chatId of knownChats) {
     try {
-      await bot.telegram.sendMessage(chatId, text, {
-        parse_mode: 'HTML',
-        reply_markup: buildCommentKeyboard(payload.id, payload.url).reply_markup
-      });
+      await sendCommentBubble(chatId, payload);
     } catch (err) {
       console.error(
         `Failed to send comment notification to ${chatId}:`,
@@ -200,19 +285,73 @@ async function broadcastCommentMessage(payload) {
 
 bot.start((ctx) => {
   ensureChatId(ctx.chat.id);
-  return ctx.reply(formatHelp());
+  return replyWithTracking(ctx, formatHelp());
 });
 
-bot.help((ctx) => ctx.reply(formatHelp()));
+bot.help((ctx) => replyWithTracking(ctx, formatHelp()));
 
 bot.command('queue', (ctx) => {
   ensureChatId(ctx.chat.id);
   const [, limitArg] = ctx.message.text.trim().split(/\s+/);
   const limit = limitArg ? parseInt(limitArg, 10) : undefined;
   if (limitArg && (!Number.isInteger(limit) || limit <= 0)) {
-    return ctx.reply('Gunakan angka positif untuk `/queue {n}`.');
+    return replyWithTracking(ctx, 'Gunakan angka positif untuk `/queue {n}`.');
   }
   return sendQueue(ctx, limit);
+});
+
+bot.command('clear', async (ctx) => {
+  ensureChatId(ctx.chat.id);
+  const chatId = ctx.chat.id;
+  const ids = chatMessages.get(chatId) || [];
+  let deleted = 0;
+  for (const messageId of ids) {
+    try {
+      await ctx.telegram.deleteMessage(chatId, messageId);
+      deleted += 1;
+    } catch (err) {
+      console.error(`Failed to delete message ${messageId}:`, err.message);
+    }
+  }
+  chatMessages.set(chatId, []);
+  const confirmation = await replyWithTracking(
+    ctx,
+    `Riwayat bot dibersihkan (${deleted} pesan).`
+  );
+  setTimeout(() => {
+    ctx.telegram
+      .deleteMessage(chatId, confirmation.message_id)
+      .then(() => {
+        untrackMessageId(chatId, confirmation.message_id);
+      })
+      .catch((err) => {
+        console.error('Failed to delete confirmation message:', err.message);
+      });
+  }, 2000);
+});
+
+bot.command('get', async (ctx) => {
+  ensureChatId(ctx.chat.id);
+  const [, limitArg] = ctx.message.text.trim().split(/\s+/);
+  const limit = limitArg ? parseInt(limitArg, 10) : undefined;
+  if (limitArg && (!Number.isInteger(limit) || limit <= 0)) {
+    return replyWithTracking(ctx, 'Gunakan angka positif untuk `/get {n}`.');
+  }
+
+  try {
+    const payload = await fetchQueue(limit, true);
+    const rows = payload?.result || [];
+    if (!rows.length) {
+      return replyWithTracking(ctx, 'Tidak ada item dengan status is_posted=0.');
+    }
+
+    for (const row of rows) {
+      await notifyQueueBubble(ctx.chat.id, row);
+    }
+  } catch (err) {
+    console.error('Failed to fetch queue details:', err.message);
+    return replyWithTracking(ctx, 'Tidak bisa mengambil data saat ini.');
+  }
 });
 
 bot.on('text', (ctx) => {
@@ -226,7 +365,10 @@ bot.on('text', (ctx) => {
   if (isTikTokUrl(text)) {
     return handleEnqueue(ctx, text.trim());
   }
-  return ctx.reply('Format tidak dikenal. Gunakan /help untuk panduan.');
+  return replyWithTracking(
+    ctx,
+    'Format tidak dikenal. Gunakan /help untuk panduan.'
+  );
 });
 
 bot.action(/generate:(\d+)/, async (ctx) => {
@@ -237,12 +379,13 @@ bot.action(/generate:(\d+)/, async (ctx) => {
       method: 'POST',
       body: JSON.stringify({})
     });
-    await ctx.reply(
+    await replyWithTracking(
+      ctx,
       `⚙️ Sedang generate komentar untuk ID ${id}. Tunggu notifikasi.`
     );
   } catch (err) {
     console.error('generate failed', err.message);
-    await ctx.reply('Gagal men-trigger generate. Coba ulang.');
+    await replyWithTracking(ctx, 'Gagal men-trigger generate. Coba ulang.');
   }
 });
 
@@ -262,10 +405,10 @@ bot.action(/submit:(\d+)/, async (ctx) => {
         [Markup.button.callback('✅ Sudah diposting', 'noop')]
       ]
     });
-    await ctx.reply(`✅ Menandai ID ${id} sebagai posted.`);
+    await replyWithTracking(ctx, `✅ Menandai ID ${id} sebagai posted.`);
   } catch (err) {
     console.error('submit failed', err.message);
-    await ctx.reply('Tidak bisa submit sekarang.');
+    await replyWithTracking(ctx, 'Tidak bisa submit sekarang.');
   }
 });
 

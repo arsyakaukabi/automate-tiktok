@@ -1,6 +1,7 @@
 const transcriptRepository = require('../repositories/transcriptRepository');
 const { convertMp4ToWav } = require('../services/audioService');
 const { JOB_INTERVAL_MS } = require('../config');
+const logger = require('../logger');
 
 let conversionJobRunning = false;
 
@@ -15,7 +16,11 @@ async function processPendingConversion(row) {
     urlId: row.url_id,
     wavPath
   });
-  console.log(`Converted ${row.mp4_path} -> ${wavPath}`);
+  logger.info('Audio conversion finished', {
+    url_id: row.url_id,
+    mp4_path: row.mp4_path,
+    wav_path: wavPath
+  });
 }
 
 async function runAudioConversionJob() {
@@ -25,15 +30,22 @@ async function runAudioConversionJob() {
 
   conversionJobRunning = true;
   try {
+    const processedIds = new Set();
     let row;
     while ((row = transcriptRepository.getNextPendingConversion())) {
+      if (processedIds.has(row.url_id)) {
+        break;
+      }
+      processedIds.add(row.url_id);
       try {
         await processPendingConversion(row);
       } catch (err) {
-        console.error(
-          `Failed to convert ${row?.mp4_path || row?.url_id}: ${err.message}`
-        );
-        break;
+        logger.error('Audio conversion failed', {
+          url_id: row?.url_id,
+          mp4_path: row?.mp4_path,
+          error: err.message
+        });
+        continue;
       }
     }
   } finally {

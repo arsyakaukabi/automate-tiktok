@@ -1,5 +1,6 @@
 const fetch = require('node-fetch');
 const { TELEGRAM_NOTIFY_URL } = require('../config');
+const logger = require('../logger');
 
 async function postNotification(path, body) {
   if (!TELEGRAM_NOTIFY_URL) {
@@ -15,12 +16,19 @@ async function postNotification(path, body) {
 
     if (!response.ok) {
       const text = await response.text();
-      console.error(
-        `[Notification] Failed to notify ${path}: ${response.status} ${text}`
-      );
+      logger.error('Notification webhook failed', {
+        path,
+        status: response.status,
+        body: text
+      });
+      return;
     }
+    logger.info('Notification delivered', { path });
   } catch (err) {
-    console.error(`[Notification] Error calling bot webhook: ${err.message}`);
+    logger.error('Notification webhook error', {
+      path,
+      error: err.message
+    });
   }
 }
 

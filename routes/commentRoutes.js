@@ -91,6 +91,9 @@ router.post('/submit', (req, res) => {
 
 router.get('/queue', (req, res) => {
   const limit = req.query.limit ? Number(req.query.limit) : undefined;
+  const includeDetails =
+    req.query.details === '1' ||
+    req.query.details === 'true';
   if (limit !== undefined && (!Number.isInteger(limit) || limit <= 0)) {
     return res.status(400).json({
       status: 'error',
@@ -99,11 +102,21 @@ router.get('/queue', (req, res) => {
   }
 
   const rows = commentRepository.listQueue(limit);
-  const result = rows.map((row) => ({
-    id: row.id,
-    status: deriveStatus(row),
-    url: row.url
-  }));
+  const result = rows.map((row) => {
+    const base = {
+      id: row.id,
+      status: deriveStatus(row),
+      url: row.url
+    };
+    if (includeDetails) {
+      return {
+        ...base,
+        prompt_text: row.prompt_text,
+        llm_comment: row.llm_comment
+      };
+    }
+    return base;
+  });
 
   return res.json({ status: 'success', result });
 });
