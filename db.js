@@ -1,16 +1,18 @@
-// db.js
 const Database = require('better-sqlite3');
 const path = require('path');
 
-// Lokasi file DB (boleh kamu ganti kalau mau)
 const DB_PATH = path.join(__dirname, 'videos.db');
+console.log('DB_PATH in container:', DB_PATH); // 👈 debug
 
 const db = new Database(DB_PATH);
 
-// PRAGMA dasar (aman meski juga ada di DDL)
-db.pragma('journal_mode = WAL');
+db.pragma('journal_mode = DELETE');
 db.pragma('synchronous = NORMAL');
 db.pragma('foreign_keys = ON');
+
+// debug: lihat tabel apa aja
+const tables = db.prepare("SELECT name, type FROM sqlite_master WHERE type IN ('table','view')").all();
+console.log('SQLite schema on startup:', tables);
 
 // DDL: 3 job (urls, transcripts, comments)
 const ddl = `
@@ -94,6 +96,16 @@ END;
 CREATE INDEX IF NOT EXISTS idx_comments_posted ON comments (is_posted);
 `;
 
-db.exec(ddl);
+try {
+  db.exec(ddl);
+  console.log('[DB] DDL executed OK');
+
+  const tables = db
+    .prepare("SELECT name, type FROM sqlite_master WHERE type IN ('table','view')")
+    .all();
+  console.log('[DB] Existing objects:', tables);
+} catch (err) {
+  console.error('[DB] Error executing DDL:', err);
+}
 
 module.exports = db;
