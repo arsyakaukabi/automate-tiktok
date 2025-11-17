@@ -10,6 +10,8 @@ WORKDIR /app
 
 # Copy hanya file dependency dulu
 COPY package*.json ./
+COPY tobyg74-tiktok-api-dl-1.3.7.tgz ./
+
 
 # Install dependencies di DALAM container (Linux)
 # npm ci lebih deterministik, kalau kamu punya package-lock.json
