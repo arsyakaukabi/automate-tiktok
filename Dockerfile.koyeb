@@ -1,0 +1,12 @@
+# Dockerfile.koyeb
+FROM koyeb/docker-compose
+
+# Copy semua isi repo ke /app
+COPY . /app
+
+WORKDIR /app
+
+# Default command: jalankan docker-compose
+CMD ["docker-compose", "up"]
+# kalau perlu build tiap deploy:
+# CMD ["docker-compose", "up", "--build"]
