@@ -6,6 +6,7 @@ const insertUrlStmt = db.prepare(
 const selectPendingStmt = db.prepare(
   'SELECT * FROM urls WHERE is_downloaded = 0 ORDER BY id ASC LIMIT 1'
 );
+const getUrlByIdStmt = db.prepare('SELECT * FROM urls WHERE id = ?');
 const updateDownloadStmt = db.prepare(
   `UPDATE urls
      SET is_downloaded = @is_downloaded,
@@ -41,6 +42,10 @@ function getNextPendingUrl() {
   return selectPendingStmt.get();
 }
 
+function getUrlById(id) {
+  return getUrlByIdStmt.get(id);
+}
+
 function markAsDownloaded({
   id,
   filePath,
@@ -63,5 +68,6 @@ function markAsDownloaded({
 module.exports = {
   insertUrls,
   getNextPendingUrl,
+  getUrlById,
   markAsDownloaded
 };

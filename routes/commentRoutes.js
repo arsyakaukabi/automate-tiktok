@@ -2,9 +2,11 @@ const express = require('express');
 const router = express.Router();
 const commentRepository = require('../repositories/commentRepository');
 const { generateCommentFromPrompt } = require('../services/llmService');
-const {
-  notifyCommentReady
-} = require('../services/notificationService');
+const { notifyCommentReady } = require('../services/notificationService');
+const urlRepository = require('../repositories/urlRepository');
+const transcriptRepository = require('../repositories/transcriptRepository');
+const { cleanupMediaFiles } = require('../services/mediaCleanupService');
+const logger = require('../logger');
 
 router.post('/comments/:id/generate', async (req, res) => {
   const id = Number(req.params.id);
@@ -56,7 +58,7 @@ router.post('/comments/:id/generate', async (req, res) => {
   }
 });
 
-router.post('/submit', (req, res) => {
+router.post('/submit', async (req, res) => {
   const { id, posted_by: postedBy } = req.body || {};
   const numericId = Number(id);
   if (!Number.isInteger(numericId) || numericId <= 0) {
@@ -78,6 +80,23 @@ router.post('/submit', (req, res) => {
     id: numericId,
     postedBy
   });
+
+  const urlRecord = urlRepository.getUrlById(comment.url_id);
+  const transcriptRecord =
+    transcriptRepository.getTranscriptByUrlId(comment.url_id);
+
+  try {
+    await cleanupMediaFiles({
+      mp4Path: urlRecord && urlRecord.mp4_path,
+      wavPath: transcriptRecord && transcriptRecord.wav_path
+    });
+  } catch (err) {
+    logger.warn('Failed to cleanup media files after posting', {
+      comment_id: numericId,
+      url_id: comment.url_id,
+      error: err.message
+    });
+  }
 
   return res.json({
     status: 'success',

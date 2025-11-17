@@ -13,52 +13,21 @@ services:
     environment:
       PORT: ${PORT:-3000}
       DOWNLOAD_JOB_INTERVAL_MS: ${DOWNLOAD_JOB_INTERVAL_MS:-10000}
-      SPEACHES_BASE_URL: ${SPEACHES_BASE_URL:-http://speaches:8000}
       TRANSCRIPTION_MODEL_ID: ${TRANSCRIPTION_MODEL_ID:-Systran/faster-whisper-small}
       TELEGRAM_NOTIFY_URL: ${TELEGRAM_NOTIFY_URL:-http://bot:3100}
       APP_BASE_URL: ${APP_BASE_URL:-http://app:3000}
-    depends_on:
-      speaches-init:
-        condition: service_completed_successfully
     volumes:
       - ./video:/app/video
       - ./audio:/app/audio
       - ./videos.db:/app/videos.db
 
-  speaches:
-    image: ghcr.io/speaches-ai/speaches:latest-cpu
-    container_name: speaches
-    restart: unless-stopped
-    ports:
-      - "8000:8000"
-    volumes:
-      - hf-hub-cache:/home/ubuntu/.cache/huggingface/hub
-
-  # Service sekali jalan buat pre-download model
-  speaches-init:
-    image: curlimages/curl:8.11.1
-    depends_on:
-      - speaches
-    environment:
-      SPEACHES_BASE_URL: http://speaches:8000
-    command: >
-      sh -c "
-        echo 'Waiting for speaches...';
-        until curl -fsS ${SPEACHES_BASE_URL}/health >/dev/null 2>&1; do
-          sleep 2;
-        done;
-        echo 'Downloading model Systran/faster-whisper-small...';
-        curl -fsS -X POST ${SPEACHES_BASE_URL}/v1/models/Systran/faster-whisper-small;
-        echo 'Model ready.';
-      "
-
   bot:
-    image: automate-tiktok-app
+    image: automate-tiktok-app   # pakai image yang sama dengan app
     container_name: automate-tiktok-bot
     restart: unless-stopped
     depends_on:
       - app
-    command: npm run bot
+    command: npm run bot         # override CMD bawaan Dockerfile
     env_file:
       - .env
     environment:
@@ -67,6 +36,3 @@ services:
       TELEGRAM_BOT_PORT: ${TELEGRAM_BOT_PORT:-3100}
     ports:
       - "${TELEGRAM_BOT_PORT:-3100}:3100"
-
-volumes:
-  hf-hub-cache:

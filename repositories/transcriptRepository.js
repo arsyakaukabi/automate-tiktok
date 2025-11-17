@@ -3,6 +3,9 @@ const db = require('../db');
 const insertTranscriptStmt = db.prepare(
   'INSERT OR IGNORE INTO transcripts (url_id) VALUES (?)'
 );
+const getTranscriptByUrlIdStmt = db.prepare(
+  'SELECT * FROM transcripts WHERE url_id = ?'
+);
 
 const getPendingConversionStmt = db.prepare(`
   SELECT
@@ -64,6 +67,10 @@ function getNextPendingTranscription() {
   return getPendingTranscriptionStmt.get();
 }
 
+function getTranscriptByUrlId(urlId) {
+  return getTranscriptByUrlIdStmt.get(urlId);
+}
+
 function markAsConverted({ urlId, wavPath }) {
   updateConversionStmt.run({
     url_id: urlId,
@@ -82,6 +89,7 @@ module.exports = {
   ensureTranscriptRecord,
   getNextPendingConversion,
   getNextPendingTranscription,
+  getTranscriptByUrlId,
   markAsConverted,
   markAsTranscripted
 };
