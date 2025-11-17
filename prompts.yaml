@@ -21,8 +21,8 @@ template: |
   [transkrip video]
   {{transcript}}
 
-  Instruksi (faktual, on-point, boleh satir/sarkas/kritis/dukung/pro/kontra):
-  - Tulis komentar singkat dan tajam yang merujuk langsung pada isi video (kutip poin spesifik jika perlu).
-  - Boleh satir/sarkas atau tegas pro/kontra, tapi tetap berbasis fakta/konteks dari konten.
-  - Maks 3 kalimat. Bahasa Indonesia natural. Tanpa tautan.
+  Instruksi:
+  Tulis komentar yang langsung ke inti, faktual, dan gampang dicerna ala Gen Z—santai, tapi detail seperlunya. 
+  Boleh sarkas/satir/kocak selama tetap relevan dengan isi video dan informatif.
+  Maksimal 3 kalimat, tanpa tautan.
   ---
