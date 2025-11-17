@@ -14,7 +14,7 @@ services:
       PORT: ${PORT:-3000}
       DOWNLOAD_JOB_INTERVAL_MS: ${DOWNLOAD_JOB_INTERVAL_MS:-10000}
       SPEACHES_BASE_URL: ${SPEACHES_BASE_URL:-http://speaches:8000}
-      TRANSCRIPTION_MODEL_ID: ${TRANSCRIPTION_MODEL_ID:-Systran/faster-whisper-large-v3}
+      TRANSCRIPTION_MODEL_ID: ${TRANSCRIPTION_MODEL_ID:-Systran/faster-whisper-small}
       TELEGRAM_NOTIFY_URL: ${TELEGRAM_NOTIFY_URL:-http://bot:3100}
       APP_BASE_URL: ${APP_BASE_URL:-http://app:3000}
     depends_on:
@@ -47,8 +47,8 @@ services:
         until curl -fsS ${SPEACHES_BASE_URL}/health >/dev/null 2>&1; do
           sleep 2;
         done;
-        echo 'Downloading model Systran/faster-whisper-large-v3...';
-        curl -fsS -X POST ${SPEACHES_BASE_URL}/v1/models/Systran/faster-whisper-large-v3;
+        echo 'Downloading model Systran/faster-whisper-small...';
+        curl -fsS -X POST ${SPEACHES_BASE_URL}/v1/models/Systran/faster-whisper-small;
         echo 'Model ready.';
       "
 

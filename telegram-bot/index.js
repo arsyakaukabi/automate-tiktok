@@ -132,9 +132,25 @@ function untrackMessageId(chatId, messageId) {
   chatMessages.set(chatId, filtered);
 }
 
+function resolveChatId(ctx) {
+  return (
+    ctx.chat?.id ||
+    ctx.message?.chat?.id ||
+    ctx.callbackQuery?.message?.chat?.id ||
+    ctx.inlineMessageId
+  );
+}
+
 async function replyWithTracking(ctx, text, options) {
-  const message = await ctx.reply(text, options);
-  trackMessageId(ctx.chat.id, message.message_id);
+  if (!ctx) {
+    throw new Error('Telegram context is missing');
+  }
+  const chatId = resolveChatId(ctx);
+  if (typeof chatId === 'undefined') {
+    throw new Error('Chat ID missing for reply');
+  }
+  const message = await ctx.telegram.sendMessage(chatId, text, options);
+  trackMessageId(chatId, message.message_id);
   return message;
 }
 
@@ -168,11 +184,13 @@ async function handleEnqueue(ctx, url) {
       ? 'ditambahkan ke antrean'
       : 'sudah ada di antrean';
     return replyWithTracking(
+      ctx,
       `✅ URL diproses (${status}). Pipeline akan berjalan otomatis.`
     );
   } catch (err) {
     console.error('Failed to add URL:', err.message);
     return replyWithTracking(
+      ctx,
       '❌ Gagal menambahkan URL. Coba lagi nanti atau gunakan /help.'
     );
   }

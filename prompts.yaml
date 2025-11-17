@@ -21,7 +21,8 @@ template: |
   [transkrip video]
   {{transcript}}
 
-  Instruksi:
-  Tulis komentar singkat, kontekstual, sopan, dan informatif untuk kolom komentar TikTok. Maks 3 kalimat.
-  Gunakan Bahasa Indonesia natural.
+  Instruksi (faktual, on-point, boleh satir/sarkas/kritis/dukung/pro/kontra):
+  - Tulis komentar singkat dan tajam yang merujuk langsung pada isi video (kutip poin spesifik jika perlu).
+  - Boleh satir/sarkas atau tegas pro/kontra, tapi tetap berbasis fakta/konteks dari konten.
+  - Maks 3 kalimat. Bahasa Indonesia natural. Tanpa tautan.
   ---

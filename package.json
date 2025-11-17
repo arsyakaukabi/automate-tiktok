@@ -1,6 +1,7 @@
 {
   "scripts": {
-    "bot": "node telegram-bot/index.js"
+    "bot": "node telegram-bot/index.js", 
+    "app": "node main.js"
   },
   "dependencies": {
     "@google/genai": "^1.29.1",
